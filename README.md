@@ -1,4 +1,4 @@
-# Hoseo University LMS Automation
+# Hoseo Macro
 
 호서대학교 LMS 자동 수강 프로그램입니다.
 
