@@ -60,42 +60,159 @@ def debug(msg):
     if log_callback:
         log_callback(formatted_msg)
 
-def random_sleep():
-    delay_time = random.randint(1, 3)
+def random_sleep(min_sec=1.0, max_sec=2.0):
+    delay_time = random.uniform(min_sec, max_sec)
     time.sleep(delay_time)
+
+def human_like_delay():
+    base_delay = random.uniform(0.2, 0.6)
+    micro_delay = random.uniform(0.1, 0.2)
+    time.sleep(base_delay + micro_delay)
+
+def typing_delay():
+    delay = random.uniform(0.02, 0.07)
+    time.sleep(delay)
+
+def click_delay():
+    delay = random.uniform(0.3, 0.8)
+    time.sleep(delay)
+
+def random_mouse_movement(driver):
+    try:
+        script = """
+        var event = new MouseEvent('mousemove', {
+            'view': window,
+            'bubbles': true,
+            'cancelable': true,
+            'clientX': arguments[0],
+            'clientY': arguments[1]
+        });
+        document.dispatchEvent(event);
+        """
+        x = random.randint(100, 800)
+        y = random.randint(100, 600)
+        driver.execute_script(script, x, y)
+        time.sleep(random.uniform(0.1, 0.3))
+    except:
+        pass
+
+def random_scroll(driver):
+    try:
+        scroll_amount = random.randint(100, 500)
+        driver.execute_script(f"window.scrollBy(0, {scroll_amount});")
+        time.sleep(random.uniform(0.5, 1.5))
+    except:
+        pass
+
+def simulate_human_behavior(driver):
+    if random.random() > 0.7:
+        random_mouse_movement(driver)
+    if random.random() > 0.8:
+        random_scroll(driver)
+
+
+
+def get_stealth_js():
+    return '''
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => undefined
+        });
+
+        Object.defineProperty(navigator, 'plugins', {
+            get: () => [1, 2, 3, 4, 5]
+        });
+        Object.defineProperty(navigator, 'languages', {
+            get: () => ['ko-KR', 'ko', 'en-US', 'en']
+        });
+
+        window.chrome = {
+            runtime: {},
+            loadTimes: function() {},
+            csi: function() {},
+            app: {}
+        };
+
+        const originalQuery = window.navigator.permissions.query;
+        window.navigator.permissions.query = (parameters) => (
+            parameters.name === 'notifications' ?
+                Promise.resolve({ state: Notification.permission }) :
+                originalQuery(parameters)
+        );
+
+        const getParameter = WebGLRenderingContext.prototype.getParameter;
+        WebGLRenderingContext.prototype.getParameter = function(parameter) {
+            if (parameter === 37445) return 'Intel Inc.';
+            if (parameter === 37446) return 'Intel Iris OpenGL Engine';
+            return getParameter.call(this, parameter);
+        };
+        
+        Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
+        Object.defineProperty(navigator, 'vendor', { get: () => 'Google Inc.' });
+        Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 0 });
+    '''
 
 def init_driver():
     options = Options()
+    
     options.add_argument("--headless=new")
+    options.add_argument("--start-maximized")
+    options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--mute-audio")
-    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--disable-software-rasterizer")
     
     options.add_argument("--disable-extensions")
     options.add_argument("--disable-popup-blocking")
     options.add_argument("--disable-infobars")
-    options.add_argument("--start-maximized")
+    options.add_argument("--mute-audio")
+    options.add_argument("--disable-notifications")
+    options.add_argument("--disable-logging")
+    options.add_argument("--log-level=3")
+    options.add_argument("--silent")
     
-    options.add_argument("--disable-software-rasterizer")
-    
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
     options.add_experimental_option('useAutomationExtension', False)
     
+    options.add_argument("--disable-web-security")
+    options.add_argument("--allow-running-insecure-content")
+    options.add_argument("--disable-features=IsolateOrigins,site-per-process")
+    options.add_argument("--disable-site-isolation-trials")
+    
+    options.add_argument("--disable-setuid-sandbox")
+    options.add_argument("--disable-accelerated-2d-canvas")
+    options.add_argument("--disable-background-timer-throttling")
+    options.add_argument("--disable-backgrounding-occluded-windows")
+    options.add_argument("--disable-renderer-backgrounding")
+    
+    options.add_experimental_option("prefs", {
+        "profile.default_content_setting_values.notifications": 2,
+        "profile.default_content_setting_values.media_stream_mic": 2,
+        "profile.default_content_setting_values.media_stream_camera": 2,
+        "profile.default_content_setting_values.geolocation": 2,
+        "credentials_enable_service": False,
+        "profile.password_manager_enabled": False,
+        "profile.default_content_settings.popups": 0,
+        "download.prompt_for_download": False,
+        "safebrowsing.enabled": False
+    })
+
+    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    options.add_argument(f"user-agent={user_agent}")
+
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
     
     driver.set_page_load_timeout(60)
     driver.set_script_timeout(60)
     
+    driver.execute_cdp_cmd('Network.setUserAgentOverride', {
+        "userAgent": user_agent
+    })
+    
     driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
-        'source': '''
-            Object.defineProperty(navigator, 'webdriver', {
-                get: () => undefined
-            })
-        '''
+        'source': get_stealth_js()
     })
     
     wait = WebDriverWait(driver, 30)
@@ -104,17 +221,28 @@ def init_driver():
 def login(driver, wait, user_id, password):
     try:
         driver.get(LMS_URL)
-        random_sleep()
+        human_like_delay()
 
         user_id_input = wait.until(EC.presence_of_element_located((By.ID, "input-username")))
+        human_like_delay()
+        
+        for char in user_id:
+            user_id_input.send_keys(char)
+            typing_delay()
+        
+        human_like_delay()
         user_password_input = wait.until(EC.presence_of_element_located((By.ID, "input-password")))
+        human_like_delay()
+        
+        for char in password:
+            user_password_input.send_keys(char)
+            typing_delay()
+        
+        click_delay()
         user_login_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".btn.btn-login")))
-
-        user_id_input.send_keys(user_id)
-        user_password_input.send_keys(password)
         user_login_button.click()
         
-        random_sleep()
+        random_sleep(1.5, 2.5)
         if "login" in driver.current_url:
              try:
                  driver.find_element(By.CLASS_NAME, "userpicture")
@@ -243,7 +371,7 @@ def watch_lecture(driver, wait, week_number, lecture_info, stop_event=None):
     main_window_handle = None
 
     try:
-        random_sleep()
+        human_like_delay()
         main_window_handle = driver.current_window_handle
         
         lecture_title_element.click()
@@ -259,7 +387,7 @@ def watch_lecture(driver, wait, week_number, lecture_info, stop_event=None):
             error("세션이 끊어졌습니다. 이 강의를 건너뜁니다.")
             return None
 
-        random_sleep()
+        human_like_delay()
 
         try:
             if EC.alert_is_present()(driver):
@@ -282,6 +410,7 @@ def watch_lecture(driver, wait, week_number, lecture_info, stop_event=None):
             try:
                 play_button = driver.find_element(By.CLASS_NAME, "vjs-big-play-button")
                 if play_button.is_displayed():
+                    click_delay()
                     play_button.click()
             except NoSuchElementException:
                 pass
