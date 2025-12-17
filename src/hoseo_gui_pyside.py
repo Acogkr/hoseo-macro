@@ -1,14 +1,12 @@
 import sys
 import os
-import json
-import time
 import threading
-from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-                               QLabel, QLineEdit, QPushButton, QCheckBox, QStackedWidget, 
-                               QTableWidget, QTableWidgetItem, QHeaderView, QProgressBar, 
-                               QTextEdit, QMessageBox, QFrame, QSpacerItem, QSizePolicy)
-from PySide6.QtCore import Qt, QThread, Signal, Slot, QSize
-from PySide6.QtGui import QFont, QIcon, QColor, QPalette
+from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+                               QLabel, QLineEdit, QPushButton, QCheckBox, QStackedWidget,
+                               QTableWidget, QTableWidgetItem, QHeaderView, QProgressBar,
+                               QTextEdit, QFrame, QSpacerItem, QSizePolicy)
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QFont, QIcon, QColor
 
 import hoseo_crawler
 import config_manager
@@ -133,7 +131,7 @@ class LoginWorker(QThread):
 
     def run(self):
         try:
-            driver, wait = hoseo_crawler.init_driver()
+            driver, wait = hoseo_crawler.init_driver(headless=True)
             if hoseo_crawler.login(driver, wait, self.user_id, self.password):
                 courses = hoseo_crawler.scan_courses(driver, wait)
                 self.finished.emit(True, courses, "로그인 성공")
@@ -408,7 +406,7 @@ class HoseoLMSApp(QMainWindow):
         try:
             base_path = sys._MEIPASS
         except Exception:
-            base_path = os.path.abspath(".")
+            base_path = os.path.abspath("..")
 
         return os.path.join(base_path, relative_path)
 
@@ -417,7 +415,7 @@ class HoseoLMSApp(QMainWindow):
         self.setWindowTitle("호서대학교 매크로")
         self.resize(900, 700)
         
-        icon_path = self.resource_path("hoseo_logo.png")
+        icon_path = self.resource_path("../resources/hoseo_logo.png")
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
         

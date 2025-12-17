@@ -9,12 +9,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
-    NoSuchElementException, 
-    TimeoutException, 
-    NoAlertPresentException, 
+    NoSuchElementException,
+    TimeoutException,
+    NoAlertPresentException,
     InvalidSessionIdException
 )
 from webdriver_manager.chrome import ChromeDriverManager
+
+from selenium_stealth import stealth
 
 LMS_URL = "https://learn.hoseo.ac.kr/login/index.php"
 
@@ -22,20 +24,25 @@ log_callback = None
 video_progress_callback = None
 VERBOSE = False
 
+
 def set_verbose(enabled):
     global VERBOSE
     VERBOSE = enabled
+
 
 def set_log_callback(callback):
     global log_callback
     log_callback = callback
 
+
 def set_video_progress_callback(callback):
     global video_progress_callback
     video_progress_callback = callback
 
+
 def _get_timestamp():
     return datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+
 
 def info(msg):
     timestamp = datetime.datetime.now().strftime("%H:%M:%S")
@@ -44,12 +51,14 @@ def info(msg):
     if log_callback:
         log_callback(formatted_msg)
 
+
 def error(msg):
     timestamp = datetime.datetime.now().strftime("%H:%M:%S")
     formatted_msg = f"[{timestamp}] [ERROR] {msg}"
     print(formatted_msg)
     if log_callback:
         log_callback(formatted_msg)
+
 
 def debug(msg):
     if not VERBOSE:
@@ -60,22 +69,27 @@ def debug(msg):
     if log_callback:
         log_callback(formatted_msg)
 
+
 def random_sleep(min_sec=1.0, max_sec=2.0):
     delay_time = random.uniform(min_sec, max_sec)
     time.sleep(delay_time)
+
 
 def human_like_delay():
     base_delay = random.uniform(0.2, 0.6)
     micro_delay = random.uniform(0.1, 0.2)
     time.sleep(base_delay + micro_delay)
 
+
 def typing_delay():
     delay = random.uniform(0.02, 0.07)
     time.sleep(delay)
 
+
 def click_delay():
     delay = random.uniform(0.3, 0.8)
     time.sleep(delay)
+
 
 def random_mouse_movement(driver):
     try:
@@ -96,6 +110,7 @@ def random_mouse_movement(driver):
     except:
         pass
 
+
 def random_scroll(driver):
     try:
         scroll_amount = random.randint(100, 500)
@@ -104,6 +119,7 @@ def random_scroll(driver):
     except:
         pass
 
+
 def simulate_human_behavior(driver):
     if random.random() > 0.7:
         random_mouse_movement(driver)
@@ -111,57 +127,22 @@ def simulate_human_behavior(driver):
         random_scroll(driver)
 
 
-
-def get_stealth_js():
-    return '''
-        Object.defineProperty(navigator, 'webdriver', {
-            get: () => undefined
-        });
-
-        Object.defineProperty(navigator, 'plugins', {
-            get: () => [1, 2, 3, 4, 5]
-        });
-        Object.defineProperty(navigator, 'languages', {
-            get: () => ['ko-KR', 'ko', 'en-US', 'en']
-        });
-
-        window.chrome = {
-            runtime: {},
-            loadTimes: function() {},
-            csi: function() {},
-            app: {}
-        };
-
-        const originalQuery = window.navigator.permissions.query;
-        window.navigator.permissions.query = (parameters) => (
-            parameters.name === 'notifications' ?
-                Promise.resolve({ state: Notification.permission }) :
-                originalQuery(parameters)
-        );
-
-        const getParameter = WebGLRenderingContext.prototype.getParameter;
-        WebGLRenderingContext.prototype.getParameter = function(parameter) {
-            if (parameter === 37445) return 'Intel Inc.';
-            if (parameter === 37446) return 'Intel Iris OpenGL Engine';
-            return getParameter.call(this, parameter);
-        };
-        
-        Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
-        Object.defineProperty(navigator, 'vendor', { get: () => 'Google Inc.' });
-        Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 0 });
-    '''
-
-def init_driver():
+def init_driver(headless=True, block_eum=False):
     options = Options()
-    
-    options.add_argument("--headless=new")
+
+    if headless:
+        options.add_argument("--headless=new")
+        info("Headless 모드 활성화")
+    else:
+        info("일반 모드 (화면 표시)")
+
     options.add_argument("--start-maximized")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-software-rasterizer")
-    
+
     options.add_argument("--disable-extensions")
     options.add_argument("--disable-popup-blocking")
     options.add_argument("--disable-infobars")
@@ -170,22 +151,22 @@ def init_driver():
     options.add_argument("--disable-logging")
     options.add_argument("--log-level=3")
     options.add_argument("--silent")
-    
+
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
     options.add_experimental_option('useAutomationExtension', False)
-    
+
     options.add_argument("--disable-web-security")
     options.add_argument("--allow-running-insecure-content")
     options.add_argument("--disable-features=IsolateOrigins,site-per-process")
     options.add_argument("--disable-site-isolation-trials")
-    
+
     options.add_argument("--disable-setuid-sandbox")
     options.add_argument("--disable-accelerated-2d-canvas")
     options.add_argument("--disable-background-timer-throttling")
     options.add_argument("--disable-backgrounding-occluded-windows")
     options.add_argument("--disable-renderer-backgrounding")
-    
+
     options.add_experimental_option("prefs", {
         "profile.default_content_setting_values.notifications": 2,
         "profile.default_content_setting_values.media_stream_mic": 2,
@@ -203,18 +184,35 @@ def init_driver():
 
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
-    
+
     driver.set_page_load_timeout(60)
     driver.set_script_timeout(60)
-    
-    driver.execute_cdp_cmd('Network.setUserAgentOverride', {
-        "userAgent": user_agent
-    })
-    
-    driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
-        'source': get_stealth_js()
-    })
-    
+
+    stealth(driver,
+            languages=["ko-KR", "ko", "en-US", "en"],
+            vendor="Google Inc.",
+            platform="Win32",
+            webgl_vendor="Intel Inc.",
+            renderer="Intel Iris OpenGL Engine",
+            fix_hairline=True,
+            run_on_insecure_origins=True,
+            )
+    info("Selenium Stealth 적용 완료")
+
+    # EUM 차단 (선택사항)
+    if block_eum:
+        driver.execute_script("""
+            const realBeacon = navigator.sendBeacon;
+            navigator.sendBeacon = function(url, data) {
+                if (url.includes('eum') || url.includes('analytics')) {
+                    console.log('Blocked EUM beacon');
+                    return true;
+                }
+                return realBeacon.call(navigator, url, data);
+            };
+        """)
+        info("EUM 차단 적용 완료")
+
     wait = WebDriverWait(driver, 30)
     return driver, wait
 
@@ -225,43 +223,44 @@ def login(driver, wait, user_id, password):
 
         user_id_input = wait.until(EC.presence_of_element_located((By.ID, "input-username")))
         human_like_delay()
-        
+
         for char in user_id:
             user_id_input.send_keys(char)
             typing_delay()
-        
+
         human_like_delay()
         user_password_input = wait.until(EC.presence_of_element_located((By.ID, "input-password")))
         human_like_delay()
-        
+
         for char in password:
             user_password_input.send_keys(char)
             typing_delay()
-        
+
         click_delay()
         user_login_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".btn.btn-login")))
         user_login_button.click()
-        
+
         random_sleep(1.5, 2.5)
         if "login" in driver.current_url:
-             try:
-                 driver.find_element(By.CLASS_NAME, "userpicture")
-                 return True
-             except:
-                 error("로그인 실패: 대시보드로 이동하지 못했습니다.")
-                 return False
+            try:
+                driver.find_element(By.CLASS_NAME, "userpicture")
+                return True
+            except:
+                error("로그인 실패: 대시보드로 이동하지 못했습니다.")
+                return False
 
         return True
     except Exception as e:
         error(f"로그인 중 오류 발생 : {e}")
         return False
 
+
 def get_course_list(driver, wait):
     course_list = []
     try:
         driver.get("https://learn.hoseo.ac.kr/local/ubion/user/index.php")
         wait.until(EC.presence_of_element_located((By.CLASS_NAME, "table-coursemos")))
-        
+
         rows = driver.find_elements(By.CSS_SELECTOR, "table.table-coursemos tbody tr")
         for row in rows:
             try:
@@ -271,21 +270,21 @@ def get_course_list(driver, wait):
                 name_cell = row.find_element(By.CSS_SELECTOR, "td.col-name a")
                 class_name = name_cell.text.strip()
                 link = name_cell.get_attribute("href")
-                
+
                 if "id=" in link:
                     course_id = link.split("id=")[-1]
                     attendance_url = f"https://learn.hoseo.ac.kr/local/ubonattend/my_status.php?id={course_id}"
-                    
+
                     course_list.append({
                         "class_name": class_name,
                         "url": attendance_url
                     })
             except NoSuchElementException:
                 continue
-                
+
     except Exception as e:
         error(f"강의 리스트를 가져오는 중 오류 발생: {e}")
-        
+
     return course_list
 
 def get_uncompleted_lectures_by_week(driver, week_number):
@@ -589,7 +588,7 @@ def process_course_with_recovery(driver, wait, course_data, stop_event, user_id,
                             except:
                                 pass
                             
-                            driver, wait = init_driver()
+                            driver, wait = init_driver(headless=True)
                             
                             if not login(driver, wait, user_id, password):
                                 error("재로그인 실패. 다시 시도합니다.")
@@ -636,7 +635,7 @@ def process_course_with_recovery(driver, wait, course_data, stop_event, user_id,
             except:
                 pass
             
-            driver, wait = init_driver()
+            driver, wait = init_driver(headless=True)
             
             if not login(driver, wait, user_id, password):
                 error("재로그인 실패")
@@ -649,5 +648,5 @@ def process_course_with_recovery(driver, wait, course_data, stop_event, user_id,
         except Exception as e:
             error(f"예상치 못한 오류: {e}")
             return False, driver, wait
-    
+
     return False, driver, wait
