@@ -13,6 +13,7 @@ import config_manager
 
 if sys.platform == 'win32':
     import ctypes
+
     myappid = 'hoseo.lms.automation.pyside6.1.0'
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
@@ -121,6 +122,7 @@ QFrame#Card QWidget {
 }
 """
 
+
 class LoginWorker(QThread):
     finished = Signal(bool, list, str)
 
@@ -143,6 +145,7 @@ class LoginWorker(QThread):
         except Exception as e:
             self.finished.emit(False, [], f"오류 발생: {str(e)}")
 
+
 class AutomationWorker(QThread):
     log_signal = Signal(str)
     progress_signal = Signal(int, int, str)
@@ -161,10 +164,10 @@ class AutomationWorker(QThread):
     def run(self):
         def log_callback(msg):
             self.log_signal.emit(msg)
-        
+
         def video_progress_callback(current_time, duration, title):
             self.video_progress_signal.emit(current_time, duration, title)
-        
+
         hoseo_crawler.set_log_callback(log_callback)
         hoseo_crawler.set_video_progress_callback(video_progress_callback)
 
@@ -172,18 +175,18 @@ class AutomationWorker(QThread):
         for i, course in enumerate(self.selected_courses):
             if self.stop_event.is_set():
                 break
-            
+
             self.progress_signal.emit(i, total, f"진행 중: {course['class_name']}")
             self.log_signal.emit(f"[{course['class_name']}] 강의 처리를 시작합니다.")
-            
+
             success, new_driver, new_wait = hoseo_crawler.process_course_with_recovery(
                 self.driver, self.wait, course, self.stop_event,
                 self.user_id, self.password, log_callback
             )
-            
+
             self.driver = new_driver
             self.wait = new_wait
-            
+
             if success:
                 self.progress_signal.emit(i + 1, total, f"완료: {course['class_name']}")
             else:
@@ -193,8 +196,9 @@ class AutomationWorker(QThread):
             self.log_signal.emit("사용자 요청에 의해 작업이 중지되었습니다.")
         else:
             self.log_signal.emit("모든 작업이 완료되었습니다.")
-        
+
         self.finished_signal.emit()
+
 
 class LoginWidget(QWidget):
     login_requested = Signal(str, str, bool)
@@ -253,7 +257,7 @@ class LoginWidget(QWidget):
         if not user_id or not pw:
             self.status_lbl.setText("학번과 비밀번호를 입력해주세요.")
             return
-        
+
         self.status_lbl.setText("로그인 중입니다...")
         self.status_lbl.setStyleSheet("color: #2CC985;")
         self.login_btn.setEnabled(False)
@@ -263,6 +267,7 @@ class LoginWidget(QWidget):
         self.status_lbl.setText(msg)
         self.status_lbl.setStyleSheet("color: #FF4B4B;" if is_error else "color: #2CC985;")
         self.login_btn.setEnabled(True)
+
 
 class DashboardWidget(QWidget):
     logout_requested = Signal()
@@ -277,15 +282,15 @@ class DashboardWidget(QWidget):
         title = QLabel("수강 대시보드")
         title.setFont(QFont("Malgun Gothic", 18, QFont.Bold))
         header_layout.addWidget(title)
-        
+
         header_layout.addStretch()
-        
+
         logout_btn = QPushButton("로그아웃")
         logout_btn.setFixedSize(100, 35)
         logout_btn.setStyleSheet("background-color: #555555;")
         logout_btn.clicked.connect(self.logout_requested.emit)
         header_layout.addWidget(logout_btn)
-        
+
         layout.addLayout(header_layout)
 
         self.table = QTableWidget()
@@ -300,32 +305,32 @@ class DashboardWidget(QWidget):
 
         self.progress_lbl = QLabel("대기 중...")
         layout.addWidget(self.progress_lbl)
-        
+
         self.progress_bar = QProgressBar()
         self.progress_bar.setTextVisible(True)
         layout.addWidget(self.progress_bar)
 
         btn_layout = QHBoxLayout()
-        
+
         self.start_btn = QPushButton("자동 수강 시작")
         self.start_btn.setFixedSize(150, 45)
         self.start_btn.setCursor(Qt.PointingHandCursor)
         btn_layout.addWidget(self.start_btn)
-        
+
         self.stop_btn = QPushButton("정지")
         self.stop_btn.setObjectName("StopButton")
         self.stop_btn.setFixedSize(100, 45)
         self.stop_btn.setCursor(Qt.PointingHandCursor)
         self.stop_btn.setEnabled(False)
         btn_layout.addWidget(self.stop_btn)
-        
+
         btn_layout.addStretch()
-        
+
         self.verbose_chk = QCheckBox("자세한 로그")
         self.verbose_chk.setCursor(Qt.PointingHandCursor)
         self.verbose_chk.stateChanged.connect(self.toggle_verbose)
         btn_layout.addWidget(self.verbose_chk)
-        
+
         layout.addLayout(btn_layout)
 
         self.log_area = QTextEdit()
@@ -354,7 +359,7 @@ class DashboardWidget(QWidget):
         self.courses = courses
         self.table.setRowCount(len(courses))
         self.checkboxes = []
-        
+
         saved_selection = None
         try:
             config = config_manager.load_config()
@@ -368,18 +373,18 @@ class DashboardWidget(QWidget):
             chk_layout.setContentsMargins(0, 0, 0, 0)
             chk_layout.setAlignment(Qt.AlignCenter)
             chk = QCheckBox()
-            
+
             is_checked = True
             if saved_selection is not None:
                 is_checked = course['class_name'] in saved_selection
             chk.setChecked(is_checked)
-            
+
             chk_layout.addWidget(chk)
             self.table.setCellWidget(i, 0, chk_widget)
             self.checkboxes.append(chk)
 
             self.table.setItem(i, 1, QTableWidgetItem(course['class_name']))
-            
+
             count = course.get('uncompleted_count', 0)
             item_count = QTableWidgetItem(f"{count}개")
             item_count.setTextAlignment(Qt.AlignCenter)
@@ -396,29 +401,32 @@ class DashboardWidget(QWidget):
 
     def append_log(self, msg):
         import datetime
-        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-        self.log_area.append(f"[{timestamp}] {msg}")
+        if not msg.startswith("["):
+            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+            msg = f"[{timestamp}] {msg}"
+        self.log_area.append(msg)
         sb = self.log_area.verticalScrollBar()
         sb.setValue(sb.maximum())
 
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    return os.path.join(base_path, relative_path)
+
+
 class HoseoLMSApp(QMainWindow):
-    def resource_path(self, relative_path):
-        try:
-            base_path = sys._MEIPASS
-        except Exception:
-            base_path = os.path.abspath("..")
-
-        return os.path.join(base_path, relative_path)
-
     def __init__(self):
         super().__init__()
         self.setWindowTitle("호서대학교 매크로")
         self.resize(900, 700)
-        
-        icon_path = self.resource_path("../resources/hoseo_logo.png")
+
+        icon_path = resource_path(os.path.join("resources", "hoseo_logo.png"))
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
-        
+
         self.driver = None
         self.wait = None
         self.stop_event = threading.Event()
@@ -428,13 +436,13 @@ class HoseoLMSApp(QMainWindow):
 
         self.login_page = LoginWidget()
         self.dashboard_page = DashboardWidget()
-        
+
         self.stack.addWidget(self.login_page)
         self.stack.addWidget(self.dashboard_page)
 
         self.login_page.login_requested.connect(self.handle_login)
         self.dashboard_page.logout_requested.connect(self.handle_logout)
-        
+
         self.dashboard_page.start_btn.clicked.connect(self.start_automation)
         self.dashboard_page.stop_btn.clicked.connect(self.stop_automation)
 
@@ -458,7 +466,7 @@ class HoseoLMSApp(QMainWindow):
 
     def handle_login(self, user_id, password, remember):
         self.save_config(user_id, password, remember)
-        
+
         self.login_worker = LoginWorker(user_id, password)
         self.login_worker.finished.connect(self.on_login_finished)
         self.login_worker.start()
@@ -496,7 +504,7 @@ class HoseoLMSApp(QMainWindow):
         self.dashboard_page.stop_btn.setEnabled(True)
 
         self.dashboard_page.progress_bar.setValue(0)
-        
+
         self.worker = AutomationWorker(
             self.driver, self.wait, selected, self.stop_event, user_id, pw
         )
@@ -513,12 +521,12 @@ class HoseoLMSApp(QMainWindow):
             self.dashboard_page.progress_bar.setValue(progress)
         else:
             self.dashboard_page.progress_bar.setValue(0)
-    
+
     def update_video_progress(self, current_time, duration, title):
         if duration > 0:
             progress = int((current_time / duration) * 100)
             self.dashboard_page.progress_bar.setValue(progress)
-            time_str = f"{int(current_time//60)}:{int(current_time%60):02d} / {int(duration//60)}:{int(duration%60):02d}"
+            time_str = f"{int(current_time // 60)}:{int(current_time % 60):02d} / {int(duration // 60)}:{int(duration % 60):02d}"
             self.dashboard_page.progress_lbl.setText(f"재생 중: {title} ({time_str})")
 
     def stop_automation(self):
@@ -538,11 +546,12 @@ class HoseoLMSApp(QMainWindow):
             self.driver.quit()
         event.accept()
 
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyleSheet(DARK_THEME_QSS)
-    
+
     window = HoseoLMSApp()
     window.show()
-    
+
     sys.exit(app.exec())
