@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hoseo-macro"
+version = "4.0.0"
+description = "호서대학교 LMS 자동수강·통합일정·성적 확인 터미널 도구"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "selenium>=4.15.0",
+    "selenium-stealth",
+    "webdriver-manager>=4.0.0",
+    "cryptography>=50.0.0",
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=5.0.0",
+    "rich>=13.0.0",
+    "questionary>=2.0.0",
+    "prompt-toolkit>=3.0.0,<4.0",
+    "wcwidth>=0.2.0",
+]
+
+[project.scripts]
+hoseo-macro = "hoseo.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pyflakes>=3.0",
+    "pytest>=8.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
